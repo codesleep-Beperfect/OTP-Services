@@ -1,5 +1,0 @@
-server:
-  port: "8080"
-
-mysql:
-  dsn: "root:Sskdhsu@123@tcp(localhost:3306)/otp"

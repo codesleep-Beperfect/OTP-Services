@@ -1,8 +1,0 @@
-server:
-  port: "8081"
-
-redis:
-  addr: "localhost:6379"
-
-tenant_service:
-  base_url: "http://localhost:8080"
