@@ -8,11 +8,11 @@ import (
 
 type Config struct {
 	Server struct {
-		Port string
-	}
+		Port string `mapstructure:"port"`
+	} `mapstructure:"server"`
 	MySQL struct {
-		DSN string
-	}
+		DSN string `mapstructure:"dsn"`
+	} `mapstructure:"mysql"`
 }
 
 var App Config

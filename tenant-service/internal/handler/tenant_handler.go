@@ -1,7 +1,7 @@
 package handler
 
 import (
-	// "net/http"
+	"net/mail"
 
 	"github.com/gin-gonic/gin"
 	"tenant-service/internal/service"
@@ -25,6 +25,11 @@ func (h *TenantHandler) Register(c *gin.Context) {
 
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		c.JSON(400, gin.H{"error": "invalid email"})
 		return
 	}
 
