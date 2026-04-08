@@ -1,7 +1,7 @@
 package handler
 
 import (
-	
+	"net/mail"
 	"otp-service/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +20,11 @@ type otpRequest struct {
 	OTP        string `json:"otp,omitempty"`
 }
 
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
 func (h *OTPHandler) Send(c *gin.Context) {
 	apiKey := c.GetHeader("x-api-key")
 	var req otpRequest
@@ -28,13 +33,18 @@ func (h *OTPHandler) Send(c *gin.Context) {
 	return
 	}
 	
+	if !isValidEmail(req.Identifier) {
+		c.JSON(400, gin.H{"error": "invalid email identifier"})
+		return
+	}
+
 	otp, err := h.svc.Send(apiKey, req.Identifier)
 
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"otp": otp})
+	c.JSON(200, gin.H{"Message": otp})
 }
 
 func (h *OTPHandler) Resend(c *gin.Context) {
@@ -47,13 +57,18 @@ func (h *OTPHandler) Resend(c *gin.Context) {
 	return
 	}
 
+	if !isValidEmail(req.Identifier) {
+		c.JSON(400, gin.H{"error": "invalid email identifier"})
+		return
+	}
+
 	otp, err := h.svc.Resend(apiKey, req.Identifier)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"otp": otp})
+	c.JSON(200, gin.H{"Message": otp})
 }
 
 func (h *OTPHandler) Verify(c *gin.Context) {
@@ -64,6 +79,11 @@ func (h *OTPHandler) Verify(c *gin.Context) {
 	if err := c.BindJSON(&req); err != nil {
 	c.JSON(400, gin.H{"error": "invalid request"})
 	return
+	}
+
+	if !isValidEmail(req.Identifier) {
+		c.JSON(400, gin.H{"error": "invalid email identifier"})
+		return
 	}
 
 	ok, err := h.svc.Verify(apiKey, req.Identifier, req.OTP)

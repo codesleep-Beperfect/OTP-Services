@@ -2,27 +2,20 @@ package config
 
 import (
 	"log"
-
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Server struct {
-		Port string `mapstructure:"port"`
-	} `mapstructure:"server"`
-
-	Redis struct {
-		Addr string `mapstructure:"addr"`
-	} `mapstructure:"redis"`
-
-	TenantService struct {
-		BaseURL string `mapstructure:"base_url"`
-	} `mapstructure:"tenant_service"`
-
 	Kafka struct {
 		Brokers []string `mapstructure:"brokers"`
-		Topic   string	 `mapstructure:"topic"`
+		Topic   string	`mapstructure:"topic"`
 	} `mapstructure:"kafka"`
+	Email struct {
+		From     string	`mapstructure:"from"`
+		Password string	`mapstructure:"password"`
+		SMTPHost string `mapstructure:"smtp_host"`
+		SMTPPort string `mapstructure:"smtp_port"`
+	} `mapstructure:"email"`
 }
 
 var App Config
@@ -31,7 +24,6 @@ func Load() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath("./config")
 	viper.SetConfigType("yaml")
-	
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal(err)

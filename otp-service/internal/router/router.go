@@ -7,7 +7,7 @@ import (
 	"otp-service/internal/handler"
 	"otp-service/internal/repository"
 	"otp-service/internal/service"
-
+	"otp-service/internal/kafka"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +17,8 @@ func SetupRouter() *gin.Engine {
 	// dependencies
 	redisRepo := repository.NewRedisRepo(db.Client)
 	tenantClient := client.NewTenantClient(config.App.TenantService.BaseURL)
-	otpService := service.NewOTPService(redisRepo, tenantClient)
+	producer := kafka.NewProducer(config.App.Kafka.Brokers, config.App.Kafka.Topic)
+	otpService := service.NewOTPService(redisRepo, tenantClient , producer)
 	otpHandler := handler.NewOTPHandler(otpService)
 
 	// routes

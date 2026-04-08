@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"otp-service/internal/client"
+	"otp-service/internal/kafka"
 	"otp-service/internal/model"
 	"otp-service/internal/repository"
 	"otp-service/internal/utils"
@@ -14,10 +15,11 @@ import (
 type OTPService struct {
 	repo   *repository.RedisRepo
 	client *client.TenantClient
+	producer *kafka.Producer
 }
 
-func NewOTPService(r *repository.RedisRepo, c *client.TenantClient) *OTPService {
-	return &OTPService{repo: r, client: c}
+func NewOTPService(r *repository.RedisRepo, c *client.TenantClient, p *kafka.Producer) *OTPService {
+	return &OTPService{repo: r, client: c, producer:p}
 }
 
 func (s *OTPService) Send(apiKey, identifier string) (string, error) {
@@ -41,9 +43,18 @@ func (s *OTPService) Send(apiKey, identifier string) (string, error) {
 	
 
 	bytes, _ := json.Marshal(data)
-	s.repo.Set(key, string(bytes), 5*time.Minute)
+	s.repo.Set(key, string(bytes), 10*time.Minute)
+	//  Kafka Event with expiry
+	event := model.OTPEvent{
+		TenantID:  tenantID,
+		Identifier: identifier,
+		OTP:       otp,
+		ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+	}
 
-	return otp, nil
+	eventBytes, _ := json.Marshal(event)
+	s.producer.Publish(eventBytes)
+	return "OTP Sent Successfully", nil
 }
 
 func (s *OTPService) Resend(apiKey, identifier string) (string, error) {
@@ -76,9 +87,20 @@ func (s *OTPService) Resend(apiKey, identifier string) (string, error) {
 	bytes, _ := json.Marshal(data)
 
 	// overwrite existing key (best practice)
-	s.repo.Set(key, string(bytes), 5*time.Minute)
+	s.repo.Set(key, string(bytes), 10*time.Minute)
 
-	return newOTP, nil
+	// Kafka event
+	event := model.OTPEvent{
+		TenantID:  tenantID,
+		Identifier: identifier,
+		OTP:       newOTP,
+		ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+	}
+
+	eventBytes, _ := json.Marshal(event)
+	s.producer.Publish(eventBytes)
+
+	return "OTP Resend Successfully", nil
 }
 
 func (s *OTPService) Verify(apiKey, identifier, otp string) (bool, error) {
@@ -90,13 +112,14 @@ func (s *OTPService) Verify(apiKey, identifier, otp string) (bool, error) {
 	key := fmt.Sprintf("otp:%s:%s", tenantID, identifier)
 
 	val, err := s.repo.Get(key)
-	fmt.Println(val , err)
 	if err != nil {
 		return false, fmt.Errorf("otp expired")
 	}
 
 	var data model.OTPData
-	json.Unmarshal([]byte(val), &data)
+	if err := json.Unmarshal([]byte(val), &data); err != nil {
+		return false, err
+	}
 	
 	// Checking hashed otp and existing hashed otp would same or not
 	if data.Hash == utils.HashOTP(tenantID , identifier , otp) {
